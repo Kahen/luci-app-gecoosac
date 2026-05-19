@@ -66,12 +66,18 @@ jobs:
           SUBTARGET: ${{ matrix.subtarget }}
         run: |
           set -euo pipefail
-          if echo "$OPENWRT_RELEASE" | grep -qi snapshot; then
-            SDK_BASE_URL="https://downloads.openwrt.org/snapshots/targets/${TARGET}/${SUBTARGET}"
-          else
-            SDK_BASE_URL="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}"
-          fi
-          SDK_FILE=$(curl -fsSL "$SDK_BASE_URL/" | sed -n 's/.*href="\(openwrt-sdk-.*Linux-x86_64.tar.xz\)".*/\1/p' | head -n1)
+          case "$OPENWRT_RELEASE" in
+            [0-9]*-[Ss][Nn][Aa][Pp][Ss][Hh][Oo][Tt])
+              SDK_BASE_URL="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}"
+              ;;
+            [Ss][Nn][Aa][Pp][Ss][Hh][Oo][Tt])
+              SDK_BASE_URL="https://downloads.openwrt.org/snapshots/targets/${TARGET}/${SUBTARGET}"
+              ;;
+            *)
+              SDK_BASE_URL="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}"
+              ;;
+          esac
+          SDK_FILE=$(curl -fsSL "$SDK_BASE_URL/" | sed -n 's/.*href="\(openwrt-sdk-.*[Ll]inux-x86_64.tar\.\(xz\|zst\)\)".*/\1/p' | head -n1)
           if [ -z "$SDK_FILE" ]; then
             echo "SDK not found at $SDK_BASE_URL"
             exit 1
