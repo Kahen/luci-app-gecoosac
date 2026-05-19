@@ -33,7 +33,7 @@
 
 ### CI 构建（OpenWrt 25.12 APK）:
 
-GitHub Actions 会基于 OpenWrt 25.12 SDK 构建 gecoosac 与 luci-app-gecoosac 的 .apk 包，产物可在 Actions Artifacts 或 Releases 中获取。
+GitHub Actions 默认基于 OpenWrt 25.12 快照 SDK 构建 gecoosac 与 luci-app-gecoosac 的 .apk 包，可通过 workflow_dispatch 的 openwrt_release 参数指定正式版本（如 25.12.0），产物可在 Actions Artifacts 或 Releases 中获取。
 
 ### 致谢:
 

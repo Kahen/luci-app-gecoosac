@@ -13,13 +13,14 @@ on:
       openwrt_release:
         description: OpenWrt release version (e.g. 25.12.0 or 25.12-SNAPSHOT)
         required: false
-        default: "25.12.0"
+        default: "25.12-SNAPSHOT"
 
 permissions:
   contents: write
 
 env:
-  OPENWRT_RELEASE: 25.12.0
+  OPENWRT_RELEASE: 25.12-SNAPSHOT
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -60,9 +61,16 @@ jobs:
 
       - name: Download OpenWrt SDK
         env:
-          SDK_BASE_URL: https://downloads.openwrt.org/releases/${{ github.event.inputs.openwrt_release || env.OPENWRT_RELEASE }}/targets/${{ matrix.target }}/${{ matrix.subtarget }}
+          OPENWRT_RELEASE: ${{ github.event.inputs.openwrt_release || env.OPENWRT_RELEASE }}
+          TARGET: ${{ matrix.target }}
+          SUBTARGET: ${{ matrix.subtarget }}
         run: |
           set -euo pipefail
+          if echo "$OPENWRT_RELEASE" | grep -qi snapshot; then
+            SDK_BASE_URL="https://downloads.openwrt.org/snapshots/targets/${TARGET}/${SUBTARGET}"
+          else
+            SDK_BASE_URL="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}"
+          fi
           SDK_FILE=$(curl -fsSL "$SDK_BASE_URL/" | sed -n 's/.*href="\(openwrt-sdk-.*Linux-x86_64.tar.xz\)".*/\1/p' | head -n1)
           if [ -z "$SDK_FILE" ]; then
             echo "SDK not found at $SDK_BASE_URL"
