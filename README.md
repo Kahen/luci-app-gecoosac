@@ -31,6 +31,10 @@
 
  ```
 
+### CI 构建（OpenWrt 25.12 APK）:
+
+GitHub Actions 会基于 OpenWrt 25.12 SDK 构建 gecoosac 与 luci-app-gecoosac 的 .apk 包，产物可在 Actions Artifacts 或 Releases 中获取。
+
 ### 致谢:
 
  ```Brach
@@ -38,4 +42,3 @@
    特别感谢lwb1978大佬的付出！
 
  ```
-

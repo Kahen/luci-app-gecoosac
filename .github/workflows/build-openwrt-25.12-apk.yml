@@ -1,0 +1,114 @@
+name: Build OpenWrt 25.12 APK
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      openwrt_release:
+        description: OpenWrt release version (e.g. 25.12.0 or 25.12-SNAPSHOT)
+        required: false
+        default: "25.12.0"
+
+permissions:
+  contents: write
+
+env:
+  OPENWRT_RELEASE: 25.12.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: aarch64
+            target: armvirt
+            subtarget: "64"
+          - name: arm
+            target: armvirt
+            subtarget: "32"
+          - name: mips
+            target: ath79
+            subtarget: generic
+          - name: mipsel
+            target: ramips
+            subtarget: mt76x8
+          - name: i386
+            target: x86
+            subtarget: generic
+          - name: x86_64
+            target: x86
+            subtarget: "64"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison gawk gettext \
+            libncurses5-dev libncursesw5-dev python3 unzip zlib1g-dev file \
+            libssl-dev wget rsync
+
+      - name: Download OpenWrt SDK
+        env:
+          SDK_BASE_URL: https://downloads.openwrt.org/releases/${{ github.event.inputs.openwrt_release || env.OPENWRT_RELEASE }}/targets/${{ matrix.target }}/${{ matrix.subtarget }}
+        run: |
+          set -euo pipefail
+          SDK_FILE=$(curl -fsSL "$SDK_BASE_URL/" | sed -n 's/.*href="\(openwrt-sdk-.*Linux-x86_64.tar.xz\)".*/\1/p' | head -n1)
+          if [ -z "$SDK_FILE" ]; then
+            echo "SDK not found at $SDK_BASE_URL"
+            exit 1
+          fi
+          curl -fSL "$SDK_BASE_URL/$SDK_FILE" -o sdk.tar.xz
+          tar -xf sdk.tar.xz
+          SDK_DIR=$(find . -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -n1)
+          echo "SDK_DIR=$SDK_DIR" >> "$GITHUB_ENV"
+
+      - name: Prepare feeds
+        run: |
+          set -euo pipefail
+          echo "src-link gecoosac $GITHUB_WORKSPACE" >> "$SDK_DIR/feeds.conf.default"
+          "$SDK_DIR/scripts/feeds" update -a
+          "$SDK_DIR/scripts/feeds" install gecoosac luci-app-gecoosac
+
+      - name: Configure build
+        run: |
+          set -euo pipefail
+          cat >> "$SDK_DIR/.config" <<'EOF'
+          CONFIG_USE_APK=y
+          CONFIG_PACKAGE_gecoosac=y
+          CONFIG_PACKAGE_luci-app-gecoosac=y
+          EOF
+          make -C "$SDK_DIR" defconfig
+
+      - name: Build packages
+        run: |
+          set -euo pipefail
+          make -C "$SDK_DIR" package/gecoosac/compile package/luci-app-gecoosac/compile V=s
+
+      - name: Collect artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          find "$SDK_DIR/bin/packages" -type f \( -name 'gecoosac_*.apk' -o -name 'luci-app-gecoosac_*.apk' \) -print -exec cp -v {} artifacts/ \;
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-${{ github.event.inputs.openwrt_release || env.OPENWRT_RELEASE }}-${{ matrix.name }}-apk
+          path: artifacts/*.apk
+
+      - name: Upload release assets
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.apk
