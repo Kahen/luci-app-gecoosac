@@ -66,7 +66,7 @@ jobs:
           SUBTARGET: ${{ matrix.subtarget }}
         run: |
           set -euo pipefail
-          if [[ "${OPENWRT_RELEASE,,}" == *snapshot* ]]; then
+          if echo "$OPENWRT_RELEASE" | grep -qi snapshot; then
             SDK_BASE_URL="https://downloads.openwrt.org/snapshots/targets/${TARGET}/${SUBTARGET}"
           else
             SDK_BASE_URL="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}"
