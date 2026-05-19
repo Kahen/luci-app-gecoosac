@@ -78,7 +78,7 @@ jobs:
               SDK_BASE_URL="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}"
               ;;
           esac
-          SDK_FILE=$(curl -fsSL "$SDK_BASE_URL/" | grep -ioE 'openwrt-sdk-[0-9A-Za-z._-]+-linux-x86_64\.tar\.(xz|zst)' | head -n1)
+          SDK_FILE=$(curl -fsSL "$SDK_BASE_URL/" | sed -n 's/.*href="\(openwrt-sdk-[0-9A-Za-z._-]\+-linux-x86_64\.tar\.\(xz\|zst\)\)".*/\1/pI' | head -n1)
           if [ -z "$SDK_FILE" ]; then
             echo "SDK not found at $SDK_BASE_URL"
             exit 1
